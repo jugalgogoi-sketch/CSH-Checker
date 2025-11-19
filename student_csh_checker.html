@@ -1,292 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student CSH Score Checker</title>
-    <!-- Load Tailwind CSS for modern styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Custom styles for a cleaner look */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-        }
-        .card {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 5px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        .result-box {
-            border-left: 5px solid;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>CSH Checker</title>
+<style>
+body { font-family: Arial; padding: 40px; max-width: 500px; margin: auto; }
+input, button { padding: 10px; font-size: 18px; width: 100%; margin-top: 15px; }
+#result { margin-top: 25px; font-size: 20px; font-weight: bold; }
+</style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body>
+<h2>Community Service Hours Checker</h2>
+<p>Enter your Student ID to view your hours.</p>
+<input id="studentId" placeholder="Enter Student ID">
+<button onclick="lookup()">Check Hours</button>
+<div id="result"></div>
 
-    <!-- Main Application Container -->
-    <div class="w-full max-w-lg">
-        <div class="card bg-white p-6 md:p-10 rounded-xl">
-            <h1 class="text-3xl font-bold text-gray-800 text-center mb-3">
-                Student CSH Score Lookup
-            </h1>
-            <p class="text-center text-gray-500 mb-8">
-                Enter your unique Student ID to check your Community Service Hours (CSH) score.
-            </p>
+<script>
+async function lookup() {
+    const id = document.getElementById("studentId").value.trim();
+    if (!id) return alert("Please enter a Student ID.");
 
-            <!-- Input Form -->
-            <div class="space-y-4 mb-6">
-                <input
-                    type="text"
-                    id="studentIdInput"
-                    placeholder="e.g., FP02433 (or fp 02433)"
-                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 uppercase tracking-wider text-lg"
-                    onkeypress="if(event.key === 'Enter') checkScore()"
-                />
-                <button
-                    onclick="checkScore()"
-                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-emerald-500/50"
-                >
-                    CHECK MY SCORE
-                </button>
-            </div>
+    const sheetId = "1MRdKU8Lsv6IXnSwV61n-U1INvZFwxiwwZen3jXnVy1E";
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=Grade+9-12`;
 
-            <!-- Result Display Area -->
-            <div id="resultContainer" class="hidden result-box p-5 rounded-lg bg-emerald-50 border-emerald-500">
-                <p id="resultMessage" class="text-lg font-semibold text-gray-800 mb-2"></p>
-                <div id="resultDetails" class="text-sm text-gray-600 space-y-1">
-                    <!-- Details will be inserted here -->
-                </div>
-            </div>
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const json = JSON.parse(text.substring(47, text.length - 2));
 
-            <!-- Error/Status Message Area -->
-            <p id="statusMessage" class="text-center text-red-500 mt-4 text-sm font-medium hidden">
-                <!-- Status messages will appear here -->
-            </p>
-        </div>
-    </div>
+        let data = json.table.rows.map(r => ({
+            id: r.c[0]?.v,
+            name: r.c[1]?.v,
+            csh: r.c[2]?.v
+        }));
 
-    <script>
-        // Global variables provided by the canvas environment for Firebase (not used in this simple app but included as a best practice)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // --- DATA SETUP (Hardcoded student data) ---
-        // NOTE: Student IDs FP02593 (Thangvon Hengkhamsambo and Thon May Anjoely) were removed
-        // because the source data showed two different students with the exact same ID, which caused
-        // look-up conflicts. This is a data error that needs correction in the source file.
-        const STUDENT_DATA = {
-            // Grade 9A TK
-            "FP00952": { name: "Bun Anna", grade: "9A TK", score: 4 },
-            "FP01862": { name: "Chan Chey Setha", grade: "9A TK", score: 2 },
-            "FP02739": { name: "Cheng Tien Hui", grade: "9A TK", score: 0 },
-            "FP02388": { name: "Kheang Vanvisal", grade: "9A TK", score: 0 },
-            "FP00914": { name: "Kov Sonica", grade: "9A TK", score: 4 },
-            "FP00984": { name: "Lim Bunthong Julian", grade: "9A TK", score: 0 },
-            "FP01014": { name: "Limkheang Sovichea", grade: "9A TK", score: 0 },
-            "FP03919": { name: "Long Channiza", grade: "9A TK", score: 8 },
-            "FP04495": { name: "Lun Mira", grade: "9A TK", score: 4 },
-            "FP00755": { name: "Ly Kosuma Chhada", grade: "9A TK", score: 4 },
-            "FP00753": { name: "Ly Meng Hour", grade: "9A TK", score: 1 },
-            "FP01331": { name: "Meng Vattanac Pascal", grade: "9A TK", score: 0 },
-            "FP04562": { name: "Tan Bophavan", grade: "9A TK", score: 5.5 },
-            "FP02712": { name: "Tan Kunthorninn", grade: "9A TK", score: 0 },
-            "FP03132": { name: "Theam Panhaseth", grade: "9A TK", score: 0 },
-            "FP02410": { name: "Ujjwal Chyau Patnaik", grade: "9A TK", score: 1 },
-            "FP00707": { name: "Un Risana", grade: "9A TK", score: 12 },
+        const student = data.find(s => String(s.id) === id);
 
-            // Grade 10A TK
-            "FP01609": { name: "Chan Lysokhapanhapiseth", grade: "10A TK", score: 5 },
-            "FP00840": { name: "Chea Channika", grade: "10A TK", score: 19.5 },
-            "FP02755": { name: "Chea Elly", grade: "10A TK", score: 6 },
-            "FP04007": { name: "Chea Linita", grade: "10A TK", score: 4.5 },
-            "FP04015": { name: "Chen Huy Thing", grade: "10A TK", score: 3 },
-            "FP00756": { name: "Cheng Solida Kanika Tevy", grade: "10A TK", score: 9 },
-            "FP00883": { name: "Dimang Sahasoeng", grade: "10A TK", score: 10.5 },
-            "FP00628": { name: "Dy Meychinh", grade: "10A TK", score: 8.5 },
-            "FP00749": { name: "Hour Monyrithear", grade: "10A TK", score: 10 },
-            "FP00841": { name: "Kao Kunchansereyboss", grade: "10A TK", score: 10 },
-            "FP00626": { name: "Keng Bennett Pitou", grade: "10A TK", score: 13.5 },
-            "FP00761": { name: "Keo Sokha Reach", grade: "10A TK", score: 23.25 },
-            "FP00837": { name: "Khou Lim Tong", grade: "10A TK", score: 17.5 },
-            "FP01338": { name: "Kohnich Sry Puthizack", grade: "10A TK", score: 5 },
-            "FP00713": { name: "Lim Rithisak", grade: "10A TK", score: 14.5 },
-            "FP01337": { name: "Seak Lyhour", grade: "10A TK", score: 11.5 },
-            "FP00746": { name: "Vann Virakboth", grade: "10A TK", score: 14.5 },
-            "FP00750": { name: "Yim Tola", grade: "10A TK", score: 17.5 },
-            "FP00874": { name: "Yong Sovanreach", grade: "10A TK", score: 5.5 },
-            "FP00630": { name: "Zang Sopheak", grade: "10A TK", score: 13 },
-
-            // Grade 10B TK
-            "FP00714": { name: "Khun Cheangleng", grade: "10B TK", score: 15.5 },
-            "FP00858": { name: "Koeut Solida", grade: "10B TK", score: 6.5 },
-            "FP00849": { name: "Kong Rithy Nory", grade: "10B TK", score: 8.5 },
-            "FP00838": { name: "Kroeng Samnang Panhchaneat", grade: "10B TK", score: 12 },
-            "FP00752": { name: "Lim Kim Hour", grade: "10B TK", score: 6.5 },
-            "FP00896": { name: "Lim Veng Hour", grade: "10B TK", score: 4.5 },
-            "FP00757": { name: "Ly Socheata", grade: "10B TK", score: 11 },
-            "FP00743": { name: "Nguon Kimlay", grade: "10B TK", score: 10 },
-            "FP00744": { name: "Nhean Panhaphon", grade: "10B TK", score: 10 },
-            "FP00878": { name: "Ouk Panha", grade: "10B TK", score: 14.5 },
-            "FP00745": { name: "Phal Pheakdey", grade: "10B TK", score: 10.5 },
-            "FP00873": { name: "Phan Setha", grade: "10B TK", score: 10 },
-            "FP00706": { name: "Sar Vattana", grade: "10B TK", score: 10 },
-            "FP00627": { name: "Sim Seangly", grade: "10B TK", score: 10.5 },
-            "FP01607": { name: "Sok Sophearith", grade: "10B TK", score: 10 },
-            "FP00708": { name: "Suon Virakboth", grade: "10B TK", score: 10 },
-            "FP00882": { name: "Tan Bunthea", grade: "10B TK", score: 10 },
-            "FP00742": { name: "Theav Visal", grade: "10B TK", score: 13 },
-            "FP00859": { name: "Un Meng Ly", grade: "10B TK", score: 10.5 },
-            "FP00747": { name: "Vong Sounich", grade: "10B TK", score: 10 },
-
-            // Grade 11A TK
-            "FP02738": { name: "Cheng Sreng Yu", grade: "11A TK", score: 24.5 },
-            "FP02261": { name: "Dolla Nanysa", grade: "11A TK", score: 70.5 },
-            "FP00678": { name: "In Panha Pong", grade: "11A TK", score: 16 },
-            "FP00596": { name: "Kong Sambathvichea", grade: "11A TK", score: 24.5 },
-            "FP00895": { name: "Lim Chhorng Kemp", grade: "11A TK", score: 22 },
-            "FP00453": { name: "Ly Jube", grade: "11A TK", score: 28.5 },
-            "FP00448": { name: "Ma Lykim", grade: "11A TK", score: 241 }, // Score of 241.0 is preserved from source
-            "FP00578": { name: "Sao Jetha", grade: "11A TK", score: 60 },
-            "FP00611": { name: "Sarin Entrayuth", grade: "11A TK", score: 23 },
-            "FP00475": { name: "Sereiwath Sopheakvatei", grade: "11A TK", score: 45 },
-            "FP00661": { name: "Sum Sokhalisa", grade: "11A TK", score: 45.5 },
-            "FP02598": { name: "Sreng Sokhim", grade: "11A TK", score: 12.5 },
-            "FP00850": { name: "Ung Limkeaseng", grade: "11A TK", score: 160.7 },
-            "FP02737": { name: "Va Soda Voleak", grade: "11A TK", score: 40.5 },
-            "FP00451": { name: "Vich Kimsreng", grade: "11A TK", score: 23 },
-
-            // Grade 11B TK
-            "FP00677": { name: "Chea Serey", grade: "11B TK", score: 17.5 },
-            "FP00452": { name: "Heav Sokunpanha", grade: "11B TK", score: 32 },
-            "FP02389": { name: "Heng Sopheakra", grade: "11B TK", score: 28.5 },
-            "FP00610": { name: "Hong Kaknika", grade: "11B TK", score: 28.5 },
-            "FP00844": { name: "Hout Kim Hour", grade: "11B TK", score: 18.5 },
-            "FP00880": { name: "In Sotheara", grade: "11B TK", score: 23 },
-            "FP00595": { name: "Kang Kimsang", grade: "11B TK", score: 29 },
-            "FP00609": { name: "Kim Phalla", grade: "11B TK", score: 15.5 },
-            "FP00843": { name: "Kim Srey Pov", grade: "11B TK", score: 19 },
-            "FP00679": { name: "Kong Ratanakmoni", grade: "11B TK", score: 14.5 },
-            "FP00577": { name: "Lim Monikavika", grade: "11B TK", score: 20 },
-            "FP00638": { name: "Lim Sereyphirun", grade: "11B TK", score: 16.5 },
-            "FP00751": { name: "Ly Monivichea", grade: "11B TK", score: 19 },
-            "FP00842": { name: "Nou Sreydalin", grade: "11B TK", score: 19.5 },
-            "FP02260": { name: "Phanna Panharith", grade: "11B TK", score: 16 },
-            "FP00450": { name: "Seng Theara", grade: "11B TK", score: 16 },
-            "FP00454": { name: "Sreang Chheng Yorn", grade: "11B TK", score: 16.5 },
-            "FP00660": { name: "Srun Sorya", grade: "11B TK", score: 22.5 },
-            "FP00582": { name: "Tep Ponnavuth", grade: "11B TK", score: 15.5 },
-            "FP00705": { name: "Theang Vicheka", grade: "11B TK", score: 16.5 },
-            "FP02390": { name: "Thorn Dith Chantha", grade: "11B TK", score: 15.5 },
-            "FP00845": { name: "Yin Chanveasna", grade: "11B TK", score: 18.5 },
-
-            // Grade 12A TK
-            "FP01610": { name: "Chan Lysokhapanhasak", grade: "12A TK", score: 44.5 },
-            "FP00359": { name: "Chhy Lyza", grade: "12A TK", score: 53.3 },
-            "FP00175": { name: "Dara Razy", grade: "12A TK", score: 43.3 },
-            "FP02433": { name: "Eng Gechsorn", grade: "12A TK", score: 80.5 },
-            "FP00565": { name: "Eung Dany Vatthana", grade: "12A TK", score: 35.0 },
-            "FP00570": { name: "Horng Monireach", grade: "12A TK", score: 48.5 },
-            "FP00600": { name: "Ith Tip Amara", grade: "12A TK", score: 20.5 },
-            "FP00639": { name: "Ly Meng Huy", grade: "12A TK", score: 26.0 },
-            "FP00093": { name: "Penghong Pheamonitta", grade: "12A TK", score: 60.8 },
-            "FP00461": { name: "Phallack Ericka", grade: "12A TK", score: 80.5 },
-            "FP00177": { name: "Phe Nancy", grade: "12A TK", score: 26.8 },
-            "FP00081": { name: "Sar Boli Molika", grade: "12A TK", score: 67.5 },
-            "FP00877": { name: "Seegers Lucy Lynn", grade: "12A TK", score: 48.3 },
-            "FP02397": { name: "Seong Malyna", grade: "12A TK", score: 62.8 },
-            "FP00360": { name: "Sor Soksan", grade: "12A TK", score: 49.0 },
-            "FP00571": { name: "Sreang Solida", grade: "12A TK", score: 22.3 },
-            "FP00601": { name: "Tep Sovanna", grade: "12A TK", score: 28.5 },
-            "FP00082": { name: "Thon Veasna", grade: "12A TK", score: 45.8 },
-            "FP00358": { name: "Yim Tolea", grade: "12A TK", score: 53.3 }
-        };
-
-        const resultContainer = document.getElementById('resultContainer');
-        const resultMessage = document.getElementById('resultMessage');
-        const resultDetails = document.getElementById('resultDetails');
-        const statusMessage = document.getElementById('statusMessage');
-        const studentIdInput = document.getElementById('studentIdInput');
-
-        /**
-         * Safely escapes HTML content to prevent XSS.
-         * @param {string} str The string to escape.
-         * @returns {string} The escaped string.
-         */
-        function escapeHtml(str) {
-            if (typeof str !== 'string') return str;
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-
-        /**
-         * Searches the student data for the provided ID and displays the result or an error.
-         */
-        function checkScore() {
-            // Use try...catch to prevent silent failures and report errors.
-            try {
-                // Get raw input value (e.g., "  fp 02433  ")
-                const rawId = studentIdInput.value;
-
-                // --- FLEXIBILITY: Clean and Normalize the ID ---
-                // 1. .toUpperCase(): Ensures case-insensitivity.
-                // 2. .replace(/\s/g, ''): Removes ALL internal and external spaces.
-                const studentId = rawId.toUpperCase().replace(/\s/g, '');
-                // ---------------------------------------------
-
-                // Clear previous results and status messages
-                resultContainer.classList.add('hidden');
-                statusMessage.classList.add('hidden', 'text-red-500'); // Reset to default error color
-                statusMessage.classList.remove('text-orange-600', 'font-bold'); // Remove critical error styling
-                statusMessage.textContent = '';
-                
-                // Basic validation
-                if (!studentId) {
-                    statusMessage.textContent = "Please enter your Student ID.";
-                    statusMessage.classList.remove('hidden');
-                    studentIdInput.focus();
-                    return;
-                }
-
-                // Attempt to find the student using the cleaned ID
-                const student = STUDENT_DATA[studentId];
-
-                if (student) {
-                    // --- SUCCESS PATH ---
-                    const name = escapeHtml(student.name);
-                    const grade = escapeHtml(student.grade);
-                    // Format score to one decimal place for a clean display
-                    const score = parseFloat(student.score).toFixed(1); 
-
-                    // Update result container styling for success
-                    resultContainer.classList.remove('hidden', 'bg-red-50');
-                    resultContainer.classList.add('bg-emerald-50');
-                    resultContainer.style.borderColor = '#10b981'; 
-
-                    resultMessage.innerHTML = `<span class="text-emerald-600">${name}</span>, your CSH score is ready!`;
-                    resultDetails.innerHTML = `
-                        <p><strong>Student ID:</strong> ${studentId}</p>
-                        <p><strong>Grade/Class:</strong> ${grade}</p>
-                        <p class="text-xl font-bold text-emerald-800 mt-2">CSH Score: ${score}</p>
-                    `;
-                    
-                } else {
-                    // --- ID NOT FOUND PATH ---
-                    statusMessage.textContent = `Error: Student ID "${studentId}" was not found. Please check the ID and try again.`;
-                    statusMessage.classList.remove('hidden');
-                    // We don't change the statusMessage color here, keeping the default red-500.
-                    studentIdInput.focus();
-                }
-
-            } catch (error) {
-                // --- CRITICAL FAILURE PATH ---
-                // If any unexpected error occurs, display it prominently.
-                console.error("Critical script error:", error);
-                
-                statusMessage.textContent = `A critical application error occurred: ${error.message}.`;
-                statusMessage.classList.remove('hidden', 'text-red-500');
-                statusMessage.classList.add('text-orange-600', 'font-bold');
-                
-                resultContainer.classList.add('hidden');
-            }
-        }
-    </script>
+        document.getElementById("result").innerHTML = student
+            ? `Name: ${student.name}<br>CSH Hours: ${student.csh}`
+            : "No record found. Check your ID.";
+    } catch(e) {
+        document.getElementById("result").innerText = "Error fetching data.";
+    }
+}
+</script>
 </body>
 </html>
